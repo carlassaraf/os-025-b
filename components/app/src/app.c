@@ -15,9 +15,9 @@ const gpio_num_t gpio_map[APP_GPIO_COUNT] = {
 };
 
 const adc_channel_t adc_map[APP_ADC_COUNT] = {
-  [ADC_MQ2] = ADC_CHANNEL_2,  /**< GPIO2 */
-  [ADC_MQ3] = ADC_CHANNEL_3,  /**< GPIO3 */
-  [ADC_MQ7] = ADC_CHANNEL_4,  /**< GPIO4 */
+  [ADC_MQ2] = ADC_CHANNEL_1,  /**< GPIO2 */
+  [ADC_MQ3] = ADC_CHANNEL_2,  /**< GPIO3 */
+  [ADC_MQ7] = ADC_CHANNEL_3,  /**< GPIO4 */
 };
 
 EventGroupHandle_t alarm_event = NULL;
