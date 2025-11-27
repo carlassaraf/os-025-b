@@ -72,6 +72,7 @@ esp_err_t digital_io_task_init(void) {
           // Configure input
           APP_TRY(gpio_set_direction(gpio, GPIO_MODE_INPUT));
       }
+      ESP_LOGI(TAG, "Configuring GPIO %d as %s", gpio, (app_gpio_num < GPIO_RST_BTN ? "OUTPUT" : "INPUT"));
   }
 
   // Initial test routine for TICKS_INITIAL_OUTPUT_TEST seconds
@@ -94,11 +95,11 @@ esp_err_t digital_io_task_init(void) {
   APP_TRY(digital_io_drive_output(gpio_map[GPIO_LED_G3], 0));
 
   // Create tasks
-  // APP_TRY(!xTaskCreate(digital_io_buzzer_task, "Buzzer task", 1024, NULL, 2, NULL));
+  APP_TRY(!xTaskCreate(digital_io_buzzer_task, "Buzzer task", 2048, NULL, 2, NULL));
   // APP_TRY(!xTaskCreate(digital_io_led_task, "Alarm LED task", 1024, NULL, 2, NULL));
   // APP_TRY(!xTaskCreate(digital_io_extractor_task, "Extractor task", 1024, NULL, 2, NULL));
   // APP_TRY(!xTaskCreate(digital_io_mq_leds_task, "MQ LEDs Task", 1024, NULL, 2, NULL));
-  APP_TRY(!xTaskCreate(digital_io_rst_button, "Reset task", 1024, NULL, 3, NULL));
+  APP_TRY(!xTaskCreate(digital_io_rst_button, "Reset task", 2048, NULL, 3, NULL));
 
   return ESP_OK;
 }
@@ -165,14 +166,18 @@ static void digital_io_buzzer_task(void *params) {
 
   while(1) {
     // Wait for any event
-    xEventGroupWaitBits(alarm_event, ALARM_THRESHOLD_ALL, pdFALSE, pdFALSE, portMAX_DELAY);
-    // Turn on LED and wait for reset
-    ESP_LOGI(TAG, "Turning on buzzer");
-    digital_io_drive_output(gpio, 1);
-    xEventGroupWaitBits(alarm_event, ALARM_RST_BIT, pdFALSE, pdTRUE, portMAX_DELAY);
-    // Once reset has been reached, turn off LED
-    ESP_LOGI(TAG, "Turning off buzzer");
-    digital_io_drive_output(gpio, 0);
+    EventBits_t events = xEventGroupWaitBits(alarm_event, ALARM_THRESHOLD_ALL | ALARM_RST_BIT, pdFALSE, pdFALSE, 50);
+    // Check what bits were set
+    if((events & ALARM_THRESHOLD_ALL) && !gpio_get_level(gpio)) {
+      // Turn on LED and wait for reset
+      ESP_LOGI(TAG, "Turning on buzzer");
+      ESP_ERROR_CHECK(digital_io_drive_output(gpio, 1));
+    }
+    else if((events & ALARM_RST_BIT) && gpio_get_level(gpio)) {
+      // Once reset has been reached, turn off LED
+      ESP_LOGI(TAG, "Turning off buzzer");
+      ESP_ERROR_CHECK(digital_io_drive_output(gpio, 0));
+    }
   }
 }
 
