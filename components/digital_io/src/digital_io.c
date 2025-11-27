@@ -98,7 +98,7 @@ esp_err_t digital_io_task_init(void) {
   APP_TRY(!xTaskCreate(digital_io_buzzer_task, "Buzzer task", 2048, NULL, 2, NULL));
   APP_TRY(!xTaskCreate(digital_io_led_task, "Alarm LED task", 2048, NULL, 2, NULL));
   // APP_TRY(!xTaskCreate(digital_io_extractor_task, "Extractor task", 1024, NULL, 2, NULL));
-  // APP_TRY(!xTaskCreate(digital_io_mq_leds_task, "MQ LEDs Task", 1024, NULL, 2, NULL));
+  APP_TRY(!xTaskCreate(digital_io_mq_leds_task, "MQ LEDs Task", 2048, NULL, 2, NULL));
   APP_TRY(!xTaskCreate(digital_io_rst_button, "Reset task", 2048, NULL, 3, NULL));
 
   return ESP_OK;
@@ -166,7 +166,7 @@ static void digital_io_buzzer_task(void *params) {
 
   while(1) {
     // Wait for any event
-    EventBits_t events = xEventGroupWaitBits(alarm_event, ALARM_THRESHOLD_ALL | ALARM_RST_BIT, pdFALSE, pdFALSE, 50);
+    EventBits_t events = xEventGroupWaitBits(alarm_event, ALARM_THRESHOLD_ALL | ALARM_RST_BIT, pdFALSE, pdFALSE, LEDS_TIME_MS);
     // Check what bits were set
     if((events & ALARM_THRESHOLD_ALL) && !gpio_get_level(gpio)) {
       // Turn on buzzer and wait for reset
@@ -178,7 +178,7 @@ static void digital_io_buzzer_task(void *params) {
       ESP_LOGI(TAG, "Turning off buzzer");
       ESP_ERROR_CHECK(digital_io_drive_output(gpio, 0));
     }
-    vTaskDelay(50);
+    vTaskDelay(LEDS_TIME_MS);
   }
 }
 
@@ -188,7 +188,7 @@ static void digital_io_led_task(void *params) {
 
   while(1) {
     // Wait for any event
-    EventBits_t events = xEventGroupWaitBits(alarm_event, ALARM_THRESHOLD_ALL | ALARM_RST_BIT, pdFALSE, pdFALSE, 50);
+    EventBits_t events = xEventGroupWaitBits(alarm_event, ALARM_THRESHOLD_ALL | ALARM_RST_BIT, pdFALSE, pdFALSE, LEDS_TIME_MS);
     // Check what bits were set
     if((events & ALARM_THRESHOLD_ALL) && !gpio_get_level(gpio)) {
       // Turn on LED and wait for reset
@@ -200,7 +200,7 @@ static void digital_io_led_task(void *params) {
       ESP_LOGI(TAG, "Turning off alarm LED");
       digital_io_drive_output(gpio, 0);
     }
-    vTaskDelay(50);
+    vTaskDelay(LEDS_TIME_MS);
   }
 }
 
@@ -210,7 +210,7 @@ static void digital_io_extractor_task(void *params) {
 
   while(1) {
     // Wait for any event
-    EventBits_t events = xEventGroupWaitBits(alarm_event, ALARM_THRESHOLD_ALL, pdFALSE, pdFALSE, 50);
+    EventBits_t events = xEventGroupWaitBits(alarm_event, ALARM_THRESHOLD_ALL, pdFALSE, pdFALSE, LEDS_TIME_MS);
     // Turn on extractor for any of the MQ sensors but only turn off if after required time there are no more gas concentration
     if(events & (ALARM_THRESHOLD_ALL) && !gpio_get_level(gpio)) {
       ESP_LOGI(TAG, "Turning on extractor");
