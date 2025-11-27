@@ -86,13 +86,13 @@ esp_err_t digital_io_task_init(void) {
   APP_TRY(digital_io_drive_output(gpio_map[GPIO_EXTRACTOR], 0));
 
   ESP_LOGI(TAG, "Testing LEDs...");
-  APP_TRY(digital_io_drive_output(gpio_map[GPIO_LED_G1], 1));
-  APP_TRY(digital_io_drive_output(gpio_map[GPIO_LED_G2], 1));
-  APP_TRY(digital_io_drive_output(gpio_map[GPIO_LED_G3], 1));
-  vTaskDelay(TICKS_INITIAL_OUTPUT_TEST);
   APP_TRY(digital_io_drive_output(gpio_map[GPIO_LED_G1], 0));
   APP_TRY(digital_io_drive_output(gpio_map[GPIO_LED_G2], 0));
   APP_TRY(digital_io_drive_output(gpio_map[GPIO_LED_G3], 0));
+  vTaskDelay(TICKS_INITIAL_OUTPUT_TEST);
+  APP_TRY(digital_io_drive_output(gpio_map[GPIO_LED_G1], 1));
+  APP_TRY(digital_io_drive_output(gpio_map[GPIO_LED_G2], 1));
+  APP_TRY(digital_io_drive_output(gpio_map[GPIO_LED_G3], 1));
 
   // Create tasks
   APP_TRY(!xTaskCreate(digital_io_buzzer_task, "Buzzer task", 2048, NULL, 2, NULL));
@@ -140,21 +140,21 @@ static void digital_io_mq_leds_task(void *params) {
     if((events & ALARM_RST_BIT) && (gpio_get_level(led_mq2) | gpio_get_level(led_mq3) | gpio_get_level(led_mq7))) {
       // Reset all LEDs
       ESP_LOGI(TAG, "Turning off MQ LEDs");
-      digital_io_drive_output(led_mq2, 0);
-      digital_io_drive_output(led_mq3, 0);
-      digital_io_drive_output(led_mq7, 0);
+      digital_io_drive_output(led_mq2, 1);
+      digital_io_drive_output(led_mq3, 1);
+      digital_io_drive_output(led_mq7, 1);
     }
     if((events & ALARM_THRESHOLD_MQ2_BIT) && !gpio_get_level(led_mq2)) {
       ESP_LOGI(TAG, "Turning on MQ2 LED");
-      digital_io_drive_output(led_mq2, 1);
+      digital_io_drive_output(led_mq2, 0);
     }
     if((events & ALARM_THRESHOLD_MQ3_BIT) && !gpio_get_level(led_mq3)) {
       ESP_LOGI(TAG, "Turning on MQ3 LED");
-      digital_io_drive_output(led_mq3, 1);
+      digital_io_drive_output(led_mq3, 0);
     }
     if((events & ALARM_THRESHOLD_MQ7_BIT) && !gpio_get_level(led_mq7)) {
       ESP_LOGI(TAG, "Turning on MQ7 LED");
-      digital_io_drive_output(led_mq7, 1);
+      digital_io_drive_output(led_mq7, 0);
     }
     vTaskDelay(LEDS_TIME_MS);
   }
