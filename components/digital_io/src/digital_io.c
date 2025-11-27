@@ -71,6 +71,7 @@ esp_err_t digital_io_task_init(void) {
       else if(app_gpio_num == GPIO_RST_BTN) {
           // Configure input
           APP_TRY(gpio_set_direction(gpio, GPIO_MODE_INPUT));
+          APP_TRY(gpio_pulldown_en(gpio));
       }
       ESP_LOGI(TAG, "Configuring GPIO %d as %s", gpio, (app_gpio_num < GPIO_RST_BTN ? "OUTPUT" : "INPUT"));
   }
