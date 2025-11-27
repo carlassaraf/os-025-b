@@ -143,7 +143,6 @@ static void mq_task(void *params) {
       ESP_LOGI(TAG, "MQ2: %d mV | MQ3: %d mV | MQ7: %d mV", mq2_mv, mq3_mv, mq7_mv);
     }
     // Sampling should be done every 60s with 40s idle
-    ESP_LOGI(TAG, "Free stack space: %d", uxTaskGetStackHighWaterMark(NULL));
     vTaskDelayUntil(&timestamp, TASK_BLOKING_TIME);
   }
 }
