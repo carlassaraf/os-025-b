@@ -85,20 +85,20 @@ esp_err_t digital_io_task_init(void) {
   APP_TRY(digital_io_drive_output(gpio_map[GPIO_EXTRACTOR], 0));
 
   ESP_LOGI(TAG, "Testing LEDs...");
-  APP_TRY(digital_io_drive_output(gpio_map[GPIO_LED_G1], 0));
-  APP_TRY(digital_io_drive_output(gpio_map[GPIO_LED_G2], 0));
-  APP_TRY(digital_io_drive_output(gpio_map[GPIO_LED_G3], 0));
-  vTaskDelay(TICKS_INITIAL_OUTPUT_TEST);
   APP_TRY(digital_io_drive_output(gpio_map[GPIO_LED_G1], 1));
   APP_TRY(digital_io_drive_output(gpio_map[GPIO_LED_G2], 1));
   APP_TRY(digital_io_drive_output(gpio_map[GPIO_LED_G3], 1));
+  vTaskDelay(TICKS_INITIAL_OUTPUT_TEST);
+  APP_TRY(digital_io_drive_output(gpio_map[GPIO_LED_G1], 0));
+  APP_TRY(digital_io_drive_output(gpio_map[GPIO_LED_G2], 0));
+  APP_TRY(digital_io_drive_output(gpio_map[GPIO_LED_G3], 0));
 
   // Create tasks
-  APP_TRY(!xTaskCreate(digital_io_buzzer_task, "Buzzer task", configMINIMAL_STACK_SIZE, NULL, 2, NULL));
-  APP_TRY(!xTaskCreate(digital_io_led_task, "Alarm LED task", configMINIMAL_STACK_SIZE, NULL, 2, NULL));
-  APP_TRY(!xTaskCreate(digital_io_extractor_task, "Extractor task", configMINIMAL_STACK_SIZE, NULL, 2, NULL));
-  APP_TRY(!xTaskCreate(digital_io_mq_leds_task, "MQ LEDs Task", configMINIMAL_STACK_SIZE, NULL, 2, NULL));
-  APP_TRY(!xTaskCreate(digital_io_rst_button, "Reset task", configMINIMAL_STACK_SIZE, NULL, 3, NULL));
+  APP_TRY(!xTaskCreate(digital_io_buzzer_task, "Buzzer task", 1024, NULL, 2, NULL));
+  APP_TRY(!xTaskCreate(digital_io_led_task, "Alarm LED task", 1024, NULL, 2, NULL));
+  APP_TRY(!xTaskCreate(digital_io_extractor_task, "Extractor task", 1024, NULL, 2, NULL));
+  APP_TRY(!xTaskCreate(digital_io_mq_leds_task, "MQ LEDs Task", 1024, NULL, 2, NULL));
+  APP_TRY(!xTaskCreate(digital_io_rst_button, "Reset task", 1024, NULL, 3, NULL));
 
   return ESP_OK;
 }
@@ -139,21 +139,21 @@ static void digital_io_mq_leds_task(void *params) {
     if(events & ALARM_RST) {
       // Reset all LEDs
       ESP_LOGI(TAG, "Turning off MQ LEDs");
-      digital_io_drive_output(led_mq2, 1);
-      digital_io_drive_output(led_mq3, 1);
-      digital_io_drive_output(led_mq7, 1);
-    }
-    if(events & ALARM_THRESHOLD_MQ2_BIT) {
-      ESP_LOGI(TAG, "Turning on MQ2 LED");
       digital_io_drive_output(led_mq2, 0);
-    }
-    if(events & ALARM_THRESHOLD_MQ3_BIT) {
-      ESP_LOGI(TAG, "Turning on MQ3 LED");
       digital_io_drive_output(led_mq3, 0);
-    }
-    if(events & ALARM_THRESHOLD_MQ7_BIT) {
-      ESP_LOGI(TAG, "Turning on MQ7 LED");
       digital_io_drive_output(led_mq7, 0);
+    }
+    if(events & ALARM_THRESHOLD_MQ2_BIT && !gpio_get_level(led_mq2)) {
+      ESP_LOGI(TAG, "Turning on MQ2 LED");
+      digital_io_drive_output(led_mq2, 1);
+    }
+    if(events & ALARM_THRESHOLD_MQ3_BIT && !gpio_get_level(led_mq3)) {
+      ESP_LOGI(TAG, "Turning on MQ3 LED");
+      digital_io_drive_output(led_mq3, 1);
+    }
+    if(events & ALARM_THRESHOLD_MQ7_BIT && !gpio_get_level(led_mq7)) {
+      ESP_LOGI(TAG, "Turning on MQ7 LED");
+      digital_io_drive_output(led_mq7, 1);
     }
     vTaskDelay(LEDS_TIME_MS);
   }
@@ -171,7 +171,7 @@ static void digital_io_buzzer_task(void *params) {
     digital_io_drive_output(gpio, 1);
     xEventGroupWaitBits(alarm_event, ALARM_RST_BIT, pdFALSE, pdTRUE, portMAX_DELAY);
     // Once reset has been reached, turn off LED
-      ESP_LOGI(TAG, "Turning off buzzer");
+    ESP_LOGI(TAG, "Turning off buzzer");
     digital_io_drive_output(gpio, 0);
   }
 }
@@ -201,11 +201,11 @@ static void digital_io_extractor_task(void *params) {
     // Wait for any event
     EventBits_t events = xEventGroupWaitBits(alarm_event, ALARM_THRESHOLD_ALL, pdFALSE, pdFALSE, 0);
     // Turn on extractor for any of the MQ sensors but only turn off if after required time there are no more gas concentration
-    if(events & (ALARM_THRESHOLD_ALL)) {
+    if(events & (ALARM_THRESHOLD_ALL) && !gpio_get_level(gpio)) {
       ESP_LOGI(TAG, "Turning on extractor");
       digital_io_drive_output(gpio, 1);
     }
-    else {
+    else if(gpio_get_level(gpio)) {
       ESP_LOGI(TAG, "Turning off extractor");
       digital_io_drive_output(gpio, 0);
     }
