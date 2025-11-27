@@ -37,7 +37,7 @@ static esp_err_t digital_io_drive_output(gpio_num_t gpio, uint32_t value);
  * @param expected_value Value to test against depending on whether the GPIO has pull-up/pull-down
  * @return GPIO value
  */
-static uint32_t digital_io_get_level(gpio_num_t gpio, uint32_t expected_value);
+static uint32_t digital_io_get_level(gpio_num_t gpio);
 
 /** @brief Handles MQ LEDs */
 static void digital_io_mq_leds_task(void *params);
@@ -94,10 +94,10 @@ esp_err_t digital_io_task_init(void) {
   APP_TRY(digital_io_drive_output(gpio_map[GPIO_LED_G3], 0));
 
   // Create tasks
-  APP_TRY(!xTaskCreate(digital_io_buzzer_task, "Buzzer task", 1024, NULL, 2, NULL));
-  APP_TRY(!xTaskCreate(digital_io_led_task, "Alarm LED task", 1024, NULL, 2, NULL));
-  APP_TRY(!xTaskCreate(digital_io_extractor_task, "Extractor task", 1024, NULL, 2, NULL));
-  APP_TRY(!xTaskCreate(digital_io_mq_leds_task, "MQ LEDs Task", 1024, NULL, 2, NULL));
+  // APP_TRY(!xTaskCreate(digital_io_buzzer_task, "Buzzer task", 1024, NULL, 2, NULL));
+  // APP_TRY(!xTaskCreate(digital_io_led_task, "Alarm LED task", 1024, NULL, 2, NULL));
+  // APP_TRY(!xTaskCreate(digital_io_extractor_task, "Extractor task", 1024, NULL, 2, NULL));
+  // APP_TRY(!xTaskCreate(digital_io_mq_leds_task, "MQ LEDs Task", 1024, NULL, 2, NULL));
   APP_TRY(!xTaskCreate(digital_io_rst_button, "Reset task", 1024, NULL, 3, NULL));
 
   return ESP_OK;
@@ -114,16 +114,16 @@ static esp_err_t digital_io_drive_output(gpio_num_t gpio, uint32_t value) {
   return ESP_OK;
 }
 
-static uint32_t digital_io_get_level(gpio_num_t gpio, uint32_t expected_value) {
+static uint32_t digital_io_get_level(gpio_num_t gpio) {
   // Check flank
-  if(gpio_get_level(gpio) == expected_value) {
+  if(gpio_get_level(gpio)) {
     // Wait to make sure it actually was pressed
     vTaskDelay(DEBOUNCING_TIME_MS);
-    if(gpio_get_level(gpio) == expected_value) {
-      return expected_value;
+    if(gpio_get_level(gpio)) {
+      return 1;
     }
   }
-  return !expected_value;
+  return 0;
 }
 
 static void digital_io_mq_leds_task(void *params) {
@@ -136,7 +136,7 @@ static void digital_io_mq_leds_task(void *params) {
     // Wait for any bit to be set
     EventBits_t events = xEventGroupWaitBits(alarm_event, ALARM_THRESHOLD_ALL | ALARM_RST, pdFALSE, pdFALSE, 0);
     // Handle the LEDs
-    if(events & ALARM_RST) {
+    if(events & ALARM_RST_BIT) {
       // Reset all LEDs
       ESP_LOGI(TAG, "Turning off MQ LEDs");
       digital_io_drive_output(led_mq2, 0);
@@ -199,17 +199,17 @@ static void digital_io_extractor_task(void *params) {
 
   while(1) {
     // Wait for any event
-    EventBits_t events = xEventGroupWaitBits(alarm_event, ALARM_THRESHOLD_ALL, pdFALSE, pdFALSE, 0);
+    EventBits_t events = xEventGroupWaitBits(alarm_event, ALARM_THRESHOLD_ALL, pdFALSE, pdFALSE, 50);
     // Turn on extractor for any of the MQ sensors but only turn off if after required time there are no more gas concentration
     if(events & (ALARM_THRESHOLD_ALL) && !gpio_get_level(gpio)) {
       ESP_LOGI(TAG, "Turning on extractor");
       digital_io_drive_output(gpio, 1);
+      vTaskDelay(EXTRACTOR_TIME_MS);
     }
     else if(gpio_get_level(gpio)) {
       ESP_LOGI(TAG, "Turning off extractor");
       digital_io_drive_output(gpio, 0);
     }
-    vTaskDelay(EXTRACTOR_TIME_MS);
   }
 }
 
@@ -218,12 +218,19 @@ static void digital_io_rst_button(void *params) {
   gpio_num_t gpio = gpio_map[GPIO_RST_BTN];
 
   while(1) {
-    // Debouncing
-    if(digital_io_get_level(gpio, 1)) {
+    // Check for events first
+    EventBits_t events = xEventGroupWaitBits(alarm_event, ALARM_RST_BIT, pdFALSE, pdFALSE, 0);
+    // Only do when the event has not been set already
+    if(digital_io_get_level(gpio) && !(events & ALARM_RST_BIT)) {
       // Reset events to let other tasks know
       ESP_LOGI(TAG, "Reset button pressed");
       xEventGroupClearBits(alarm_event, ALARM_THRESHOLD_ALL);
       xEventGroupSetBits(alarm_event, ALARM_RST_BIT);
+    }
+    else if(!digital_io_get_level(gpio) && (events & ALARM_RST_BIT)) {
+      // When low, should clear event bit
+      ESP_LOGI(TAG, "Reset button released");
+      xEventGroupClearBits(alarm_event, ALARM_RST_BIT);
     }
     vTaskDelay(RST_READING_TIME_MS);
   }
