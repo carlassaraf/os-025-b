@@ -137,22 +137,22 @@ static void digital_io_mq_leds_task(void *params) {
     // Wait for any bit to be set
     EventBits_t events = xEventGroupWaitBits(alarm_event, ALARM_THRESHOLD_ALL | ALARM_RST, pdFALSE, pdFALSE, 0);
     // Handle the LEDs
-    if(events & ALARM_RST_BIT) {
+    if((events & ALARM_RST_BIT) && (gpio_get_level(led_mq2) | gpio_get_level(led_mq3) | gpio_get_level(led_mq7))) {
       // Reset all LEDs
       ESP_LOGI(TAG, "Turning off MQ LEDs");
       digital_io_drive_output(led_mq2, 0);
       digital_io_drive_output(led_mq3, 0);
       digital_io_drive_output(led_mq7, 0);
     }
-    if(events & ALARM_THRESHOLD_MQ2_BIT && !gpio_get_level(led_mq2)) {
+    if((events & ALARM_THRESHOLD_MQ2_BIT) && !gpio_get_level(led_mq2)) {
       ESP_LOGI(TAG, "Turning on MQ2 LED");
       digital_io_drive_output(led_mq2, 1);
     }
-    if(events & ALARM_THRESHOLD_MQ3_BIT && !gpio_get_level(led_mq3)) {
+    if((events & ALARM_THRESHOLD_MQ3_BIT) && !gpio_get_level(led_mq3)) {
       ESP_LOGI(TAG, "Turning on MQ3 LED");
       digital_io_drive_output(led_mq3, 1);
     }
-    if(events & ALARM_THRESHOLD_MQ7_BIT && !gpio_get_level(led_mq7)) {
+    if((events & ALARM_THRESHOLD_MQ7_BIT) && !gpio_get_level(led_mq7)) {
       ESP_LOGI(TAG, "Turning on MQ7 LED");
       digital_io_drive_output(led_mq7, 1);
     }
