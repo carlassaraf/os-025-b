@@ -69,7 +69,7 @@ esp_err_t mq_task_init(void) {
   APP_TRY(mq_adc_channel_init(adc_map[ADC_MQ3]));
   APP_TRY(mq_adc_channel_init(adc_map[ADC_MQ7]));
 
-  APP_TRY(!xTaskCreate(mq_task, "MQ task", configMINIMAL_STACK_SIZE, NULL, 1, NULL));
+  APP_TRY(!xTaskCreate(mq_task, "MQ task", 2048, NULL, 1, NULL));
   return ESP_OK;
 }
 
@@ -143,6 +143,7 @@ static void mq_task(void *params) {
       ESP_LOGI(TAG, "MQ2: %d mV | MQ3: %d mV | MQ7: %d mV", mq2_mv, mq3_mv, mq7_mv);
     }
     // Sampling should be done every 60s with 40s idle
+    ESP_LOGI(TAG, "Free stack space: %d", uxTaskGetStackHighWaterMark(NULL));
     vTaskDelayUntil(&timestamp, TASK_BLOKING_TIME);
   }
 }
