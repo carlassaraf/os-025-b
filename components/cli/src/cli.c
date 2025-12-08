@@ -49,6 +49,10 @@ static void set_wrapper(cli_cmd_bits_t cli_event_bit, uint32_t *value) {
   xQueueSend(cli_data, value, portMAX_DELAY);
 }
 
+static void exec_wrapper(cli_cmd_bits_t cli_event_bit) {
+  xEventGroupSetBits(cli_event, cli_event_bit);
+}
+
 // Getter functions
 static uint32_t get_mq2(void) { return get_wrapper(GET_MQ2_BIT); }
 static uint32_t get_mq3(void) { return get_wrapper(GET_MQ3_BIT); }
@@ -69,7 +73,7 @@ static void set_mq_cycle(uint32_t ms) { set_wrapper(SET_MQ_CYCLE_BIT, &ms); }
 static void set_extractor_ms(uint32_t ms) { set_wrapper(SET_EXTRACTOR_MS_BIT, &ms); }
 
 // Exec functions
-static void exec_rst(void) { return; }
+static void exec_rst(void) { exec_wrapper(EXEC_RST_BIT); }
 
 // Available commands
 cli_param_t commands[] = {
@@ -149,7 +153,7 @@ static void cli_process_command(char *input) {
     for(uint32_t i = 0; commands[i].name != NULL; i++) {
       if(strcmp(commands[i].name, variable) == 0) {
         commands[i].exec();
-        ESP_LOGI(TAG, "%s %s = %d", command, variable);
+        ESP_LOGI(TAG, "%s %s", command, variable);
         return;
       }
     }
