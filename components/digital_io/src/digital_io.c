@@ -18,8 +18,11 @@
 #define RST_READING_TIME_MS pdMS_TO_TICKS(50)
 /** LED blocking time */
 #define LEDS_TIME_MS  pdMS_TO_TICKS(50)
+
+/** Default extractor on time */
+#define EXTRACTOR_TIME_MS_DEFAULT pdMS_TO_TICKS(30 * 60 * 1000)
 /** Extractor blocking time */
-#define EXTRACTOR_TIME_MS pdMS_TO_TICKS(30 * 60 * 1000)
+uint32_t extractor_time_ms;
 
 // Private function prototypes
 
@@ -52,7 +55,10 @@ static void digital_io_led_task(void *params);
 static void digital_io_extractor_task(void *params);
 
 /** @brief Handles reset alarm button */
-static void digital_io_rst_button(void *params);
+static void digital_io_rst_button_task(void *params);
+
+/** @brief Handles CLI commands for IOs */
+static void digital_io_cli_task(void *params);
 
 // Public functions
 
@@ -95,12 +101,16 @@ esp_err_t digital_io_task_init(void) {
   APP_TRY(digital_io_drive_output(gpio_map[GPIO_LED_G2], 1));
   APP_TRY(digital_io_drive_output(gpio_map[GPIO_LED_G3], 1));
 
+  // Initialize variables from NVS
+  APP_TRY(nvs_variable_init(TAG, "extractor_time", &extractor_time_ms, EXTRACTOR_TIME_MS_DEFAULT));
+
   // Create tasks
   APP_TRY(!xTaskCreate(digital_io_buzzer_task, "Buzzer task", 2048, NULL, 2, NULL));
   APP_TRY(!xTaskCreate(digital_io_led_task, "Alarm LED task", 2048, NULL, 2, NULL));
   APP_TRY(!xTaskCreate(digital_io_extractor_task, "Extractor task", 2048, NULL, 2, NULL));
   APP_TRY(!xTaskCreate(digital_io_mq_leds_task, "MQ LEDs Task", 2048, NULL, 2, NULL));
-  APP_TRY(!xTaskCreate(digital_io_rst_button, "Reset task", 2048, NULL, 3, NULL));
+  APP_TRY(!xTaskCreate(digital_io_rst_button_task, "Reset task", 2048, NULL, 3, NULL));
+  APP_TRY(!xTaskCreate(digital_io_cli_task, "IO cli task", 2048, NULL, 2, NULL));
 
   return ESP_OK;
 }
@@ -216,7 +226,7 @@ static void digital_io_extractor_task(void *params) {
     if((events & (ALARM_THRESHOLD_ALL)) && !gpio_get_level(gpio)) {
       ESP_LOGI(TAG, "Turning on extractor");
       digital_io_drive_output(gpio, 1);
-      vTaskDelay(EXTRACTOR_TIME_MS);
+      vTaskDelay(extractor_time_ms);
     }
     else if(gpio_get_level(gpio)) {
       ESP_LOGI(TAG, "Turning off extractor");
@@ -226,7 +236,7 @@ static void digital_io_extractor_task(void *params) {
   }
 }
 
-static void digital_io_rst_button(void *params) {
+static void digital_io_rst_button_task(void *params) {
   // GPIO number
   gpio_num_t gpio = gpio_map[GPIO_RST_BTN];
 
@@ -246,5 +256,36 @@ static void digital_io_rst_button(void *params) {
       xEventGroupClearBits(alarm_event, ALARM_RST_BIT);
     }
     vTaskDelay(RST_READING_TIME_MS);
+  }
+}
+
+static void digital_io_cli_task(void *params) {
+  // Used for queue data
+  int dummy;
+
+  while(1) {
+    // Check for any request from CLI
+    EventBits_t events = xEventGroupWaitBits(cli_event, DIGITAL_IO_EVENTS_ALL, pdFALSE, pdFALSE, portMAX_DELAY);
+    // Check what command was issued
+    if(events & EXEC_RST_BIT) {
+      xQueueReceive(cli_data, &dummy, portMAX_DELAY);
+      ESP_LOGI(TAG, "Reset command issued");
+      xEventGroupClearBits(alarm_event, ALARM_THRESHOLD_ALL);
+      xEventGroupSetBits(alarm_event, ALARM_RST_BIT);
+      xEventGroupClearBits(cli_event, EXEC_RST_BIT);
+    }
+    else if(events & GET_EXTRACTOR_MS_BIT) {
+      uint32_t dummy = extractor_time_ms * portTICK_PERIOD_MS;
+      xQueueSend(cli_data, &dummy, portMAX_DELAY);
+      xEventGroupClearBits(cli_event, GET_EXTRACTOR_MS_BIT);
+    }
+    else if(events & SET_EXTRACTOR_MS_BIT) {
+      xQueueReceive(cli_data, &extractor_time_ms, portMAX_DELAY);
+      extractor_time_ms = pdMS_TO_TICKS(extractor_time_ms);
+      nvs_set_u32(app_nvs_handle, "extractor_time", extractor_time_ms);
+      nvs_commit(app_nvs_handle);
+      xEventGroupClearBits(cli_event, SET_EXTRACTOR_MS_BIT);
+    }
+    vTaskDelay(pdMS_TO_TICKS(10));
   }
 }
