@@ -8,6 +8,9 @@
 #include "driver/gpio.h"
 #include "esp_adc/adc_oneshot.h"
 
+#include "nvs_flash.h"
+#include "nvs.h"
+
 /** Macro to test functions and return error */
 #define APP_TRY(x)  \
 do {                  \
@@ -101,6 +104,9 @@ extern EventGroupHandle_t alarm_event;
 extern EventGroupHandle_t cli_event;
 extern QueueHandle_t cli_data;
 
+extern nvs_handle_t app_nvs_handle;
+
 esp_err_t app_init(void);
+esp_err_t app_nvs_init(void);
 
 #endif

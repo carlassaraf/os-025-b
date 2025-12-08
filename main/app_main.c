@@ -18,6 +18,9 @@ void app_main(void) {
     ESP_ERROR_CHECK(app_init());
     ESP_LOGI(TAG, "FreeRTOS resources created");
 
+    ESP_ERROR_CHECK(app_nvs_init());
+    ESP_LOGI(TAG, "NVS opened");
+
     ESP_ERROR_CHECK(digital_io_task_init());
     ESP_LOGI(TAG, "Digital IO peripherals initialized");
 
