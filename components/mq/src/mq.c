@@ -174,6 +174,13 @@ static void mq_task(void *params) {
         xEventGroupClearBits(alarm_event, ALARM_THRESHOLD_MQ7_BIT);
       }
 
+      if(mq2_mv < mq2_threshold_mv && mq3_mv < mq3_threshold_mv && mq7_mv < mq7_threshold_mv) {
+        xEventGroupSetBits(alarm_event, ALARM_OK_TO_TURN_OFF_BIT);
+      }
+      else {
+        xEventGroupClearBits(alarm_event, ALARM_OK_TO_TURN_OFF_BIT);
+      }
+
       ESP_LOGI(TAG, "MQ2: %d mV | MQ3: %d mV | MQ7: %d mV", mq2_mv, mq3_mv, mq7_mv);
     }
     // Sampling should be done every 60s with 40s idle

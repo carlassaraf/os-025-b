@@ -44,16 +44,20 @@ typedef enum app_adc {
 
 typedef enum app_alarm_src {
   ALARM_RST,            /**< Reset button has been pressed */
+  ALARM_CLI_RST,        /**< Reset command has been issued */
   ALARM_THRESHOLD_MQ2,  /**< MQ2 voltage over threshold */
   ALARM_THRESHOLD_MQ3,  /**< MQ3 voltage over threshold */
-  ALARM_THRESHOLD_MQ7   /**< MQ7 voltage over threshold */
+  ALARM_THRESHOLD_MQ7,  /**< MQ7 voltage over threshold */
+  ALARM_OK_TO_TURN_OFF  /**< Its OK to turn off extractor */
 } app_alarm_src_t;
 
 typedef enum app_event_bits {
   ALARM_RST_BIT = 1 << ALARM_RST,
+  ALARM_CLI_RST_BIT = 1 << ALARM_CLI_RST,
   ALARM_THRESHOLD_MQ2_BIT = 1 << ALARM_THRESHOLD_MQ2,
   ALARM_THRESHOLD_MQ3_BIT = 1 << ALARM_THRESHOLD_MQ3,
   ALARM_THRESHOLD_MQ7_BIT = 1 << ALARM_THRESHOLD_MQ7,
+  ALARM_OK_TO_TURN_OFF_BIT = 1 << ALARM_OK_TO_TURN_OFF,
   ALARM_THRESHOLD_ALL = 1 << ALARM_THRESHOLD_MQ2 | 1 << ALARM_THRESHOLD_MQ3 | 1 << ALARM_THRESHOLD_MQ7
 } app_event_bits_t;
 
