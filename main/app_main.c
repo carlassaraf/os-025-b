@@ -8,6 +8,7 @@
 #include "app.h"
 #include "mq.h"
 #include "digital_io.h"
+#include "cli.h"
 
 static const char *TAG = "app_main";
 
@@ -22,6 +23,9 @@ void app_main(void) {
 
     ESP_ERROR_CHECK(mq_task_init());
     ESP_LOGI(TAG, "Analog inputs for MQs initialized");
+
+    ESP_ERROR_CHECK(cli_task_init());
+    ESP_LOGI(TAG, "CLI task initialized");
 
     ESP_LOGI(TAG, "Deleting main task");
     vTaskDelete(NULL);
