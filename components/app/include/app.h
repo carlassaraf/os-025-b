@@ -109,4 +109,13 @@ extern nvs_handle_t app_nvs_handle;
 esp_err_t app_init(void);
 esp_err_t app_nvs_init(void);
 
+/**
+ * @brief Initializes an MQ variable from NVS
+ * @param key Name of the variable in NVS
+ * @param dst Pointer to variable that host NVS value
+ * @param def Variable default value if NVS was not initialized
+ * @return ESP_OK if successfull
+ */
+esp_err_t nvs_variable_init(char *tag, char *key, uint32_t *dst, uint32_t def);
+
 #endif
