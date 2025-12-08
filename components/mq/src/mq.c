@@ -10,6 +10,8 @@
 #include "esp_adc/adc_cali.h"
 #include "esp_adc/adc_cali_scheme.h"
 
+#include "nvs_flash.h"
+
 /** File tag */
 #define TAG "MQX"
 
@@ -18,19 +20,27 @@ adc_oneshot_unit_handle_t adc_handle = {0};
 /** ADC calibration handles */
 adc_cali_handle_t adc_cali_handle[APP_ADC_COUNT] = {0};
 
+// Default NVS values
+
+#define MQ_SAMPLING_TIME_MS_DEFAULT   pdMS_TO_TICKS(20000)
+#define MQ_CYCLE_MS_DEFAULT pdMS_TO_TICKS(60000)
+#define MQ2_THRESHOLD_MV_DEFAULT  2500
+#define MQ3_THRESHOLD_MV_DEFAULT  2500
+#define MQ7_THRESHOLD_MV_DEFAULT  2500
+
 /** Time to sample */
-uint32_t mq_sampling_time_ms = pdMS_TO_TICKS(20000);
+uint32_t mq_sampling_time_ms;
 /** Time that the task is blocked */
-uint32_t mq_cycle_ms = pdMS_TO_TICKS(60000);
+uint32_t mq_cycle_ms;
 /** Periodic time sampling */
 #define MQ_TASK_SAMPLING_TICK   pdMS_TO_TICKS(100)
 /** Number of samples */
 #define MQ_SAMPLES              (mq_sampling_time_ms / MQ_TASK_SAMPLING_TICK)
 
 /** Voltage thresholds */
-uint32_t mq2_threshold_mv = 2500;
-uint32_t mq3_threshold_mv = 2500;
-uint32_t mq7_threshold_mv = 2500;
+uint32_t mq2_threshold_mv;
+uint32_t mq3_threshold_mv;
+uint32_t mq7_threshold_mv;
 
 /**
  * @brief Initializes the ADC for the MQ sensors
@@ -54,6 +64,21 @@ static esp_err_t mq_adc_channel_init(adc_channel_t adc_channel);
 static esp_err_t mq_read_mv(adc_channel_t adc_channel, int *mv);
 
 /**
+ * @brief Initializes an MQ variable from NVS
+ * @param key Name of the variable in NVS
+ * @param dst Pointer to variable that host NVS value
+ * @param def Variable default value if NVS was not initialized
+ * @return ESP_OK if successfull
+ */
+static esp_err_t mq_nvs_variable_init(char *key, uint32_t *dst, uint32_t def);
+
+/**
+ * @brief Handles the NVS initialization for the MQ variables
+ * @return ESP_OK if successfull
+ */
+static esp_err_t mq_nvs_init(void);
+
+/**
  * @brief Main MQ task
  */
 static void mq_task(void *params);
@@ -73,6 +98,9 @@ esp_err_t mq_task_init(void) {
   APP_TRY(mq_adc_channel_init(adc_map[ADC_MQ2]));
   APP_TRY(mq_adc_channel_init(adc_map[ADC_MQ3]));
   APP_TRY(mq_adc_channel_init(adc_map[ADC_MQ7]));
+
+  // Initialize variables from NVS
+  APP_TRY(mq_nvs_init());
 
   APP_TRY(!xTaskCreate(mq_task, "MQ task", 2048, NULL, 1, NULL));
   APP_TRY(!xTaskCreate(mq_cli, "MQ cli", 2048, NULL, 2, NULL));
@@ -97,6 +125,29 @@ static esp_err_t mq_adc_channel_init(adc_channel_t adc_channel) {
 
 static esp_err_t mq_read_mv(adc_channel_t adc_channel, int *mv) {
   return adc_oneshot_get_calibrated_result(adc_handle, adc_cali_handle[adc_channel - adc_map[ADC_MQ2]], adc_channel, mv);
+}
+
+static esp_err_t mq_nvs_variable_init(char *key, uint32_t *dst, uint32_t def) {
+
+  if(nvs_get_u32(app_nvs_handle, key, dst) == ESP_ERR_NVS_NOT_FOUND) {
+    // Key does not exist, we have to set default value in NVS
+    nvs_set_u32(app_nvs_handle, key, def);
+    nvs_commit(app_nvs_handle);
+    *dst = def;
+  }
+  else {
+    ESP_LOGI(TAG, "%s = %d from NVS", key, *dst);
+  }
+  return ESP_OK;
+}
+
+static esp_err_t mq_nvs_init(void) {
+  mq_nvs_variable_init("mq2_thres", &mq2_threshold_mv, MQ2_THRESHOLD_MV_DEFAULT);
+  mq_nvs_variable_init("mq3_thres", &mq3_threshold_mv, MQ3_THRESHOLD_MV_DEFAULT);
+  mq_nvs_variable_init("mq7_thres", &mq7_threshold_mv, MQ7_THRESHOLD_MV_DEFAULT);
+  mq_nvs_variable_init("mq_sampling", &mq_sampling_time_ms, MQ_SAMPLING_TIME_MS_DEFAULT);
+  mq_nvs_variable_init("mq_cycle", &mq_cycle_ms, MQ_CYCLE_MS_DEFAULT);
+  return ESP_OK;
 }
 
 static void mq_task(void *params) {
@@ -190,14 +241,20 @@ static void mq_cli(void *params) {
     }
     else if(events & SET_MQ2_THRES_BIT) {
       xQueueReceive(cli_data, &mq2_threshold_mv, portMAX_DELAY);
+      nvs_set_u32(app_nvs_handle, "mq2_thres", mq2_threshold_mv);
+      nvs_commit(app_nvs_handle);
       xEventGroupClearBits(cli_event, SET_MQ2_THRES_BIT);
     }
     else if(events & SET_MQ3_THRES_BIT) {
       xQueueReceive(cli_data, &mq3_threshold_mv, portMAX_DELAY);
+      nvs_set_u32(app_nvs_handle, "mq3_thres", mq3_threshold_mv);
+      nvs_commit(app_nvs_handle);
       xEventGroupClearBits(cli_event, SET_MQ3_THRES_BIT);
     }
     else if(events & SET_MQ7_THRES_BIT) {
       xQueueReceive(cli_data, &mq7_threshold_mv, portMAX_DELAY);
+      nvs_set_u32(app_nvs_handle, "mq7_thres", mq7_threshold_mv);
+      nvs_commit(app_nvs_handle);
       xEventGroupClearBits(cli_event, SET_MQ7_THRES_BIT);
     }
     else if(events & GET_MQ_SAMPLING_BIT) {
@@ -208,6 +265,8 @@ static void mq_cli(void *params) {
     else if(events & SET_MQ_SAMPLING_BIT) {
       xQueueReceive(cli_data, &mq_sampling_time_ms, portMAX_DELAY);
       mq_sampling_time_ms = pdMS_TO_TICKS(mq_sampling_time_ms);
+      nvs_set_u32(app_nvs_handle, "mq_sampling", mq_sampling_time_ms);
+      nvs_commit(app_nvs_handle);
       xEventGroupClearBits(cli_event, SET_MQ_SAMPLING_BIT);
     }
     else if(events & GET_MQ_CYCLE_BIT) {
@@ -218,6 +277,8 @@ static void mq_cli(void *params) {
     else if(events & SET_MQ_CYCLE_BIT) {
       xQueueReceive(cli_data, &mq_cycle_ms, portMAX_DELAY);
       mq_cycle_ms = pdMS_TO_TICKS(mq_cycle_ms);
+      nvs_set_u32(app_nvs_handle, "mq_cycle", mq_cycle_ms);
+      nvs_commit(app_nvs_handle);
       xEventGroupClearBits(cli_event, SET_MQ_CYCLE_BIT);
     }
     vTaskDelay(pdMS_TO_TICKS(10));
