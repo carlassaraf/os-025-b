@@ -3,6 +3,7 @@
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
+#include "freertos/queue.h"
 
 #include "driver/gpio.h"
 #include "esp_adc/adc_oneshot.h"
@@ -53,10 +54,52 @@ typedef enum app_event_bits {
   ALARM_THRESHOLD_ALL = 1 << ALARM_THRESHOLD_MQ2 | 1 << ALARM_THRESHOLD_MQ3 | 1 << ALARM_THRESHOLD_MQ7
 } app_event_bits_t;
 
+typedef enum cli_cmd {
+  GET_MQ2,
+  GET_MQ3,
+  GET_MQ7,
+  GET_MQ2_THRES,
+  GET_MQ3_THRES,
+  GET_MQ7_THRES,
+  SET_MQ2_THRES,
+  SET_MQ3_THRES,
+  SET_MQ7_THRES,
+  GET_MQ_SAMPLING,
+  SET_MQ_SAMPLING,
+  GET_MQ_CYCLE,
+  SET_MQ_CYCLE,
+  EXEC_RST,
+  GET_EXTRACTOR_MS,
+  SET_EXTRACTOR_MS
+} cli_cmd_t;
+
+typedef enum cli_cmd_bits {
+  GET_MQ2_BIT = 1 << GET_MQ2,
+  GET_MQ3_BIT = 1 << GET_MQ3,
+  GET_MQ7_BIT = 1 << GET_MQ7,
+  GET_MQ2_THRES_BIT = 1 << GET_MQ2_THRES,
+  GET_MQ3_THRES_BIT = 1 << GET_MQ3_THRES,
+  GET_MQ7_THRES_BIT = 1 << GET_MQ7_THRES,
+  SET_MQ2_THRES_BIT = 1 << SET_MQ2_THRES,
+  SET_MQ3_THRES_BIT = 1 << SET_MQ3_THRES,
+  SET_MQ7_THRES_BIT = 1 << SET_MQ7_THRES,
+  GET_MQ_SAMPLING_BIT = 1 << GET_MQ_SAMPLING,
+  SET_MQ_SAMPLING_BIT = 1 << SET_MQ_SAMPLING,
+  GET_MQ_CYCLE_BIT = 1 << GET_MQ_CYCLE,
+  SET_MQ_CYCLE_BIT = 1 << SET_MQ_CYCLE,
+  MQ_EVENTS_ALL = GET_MQ2_BIT | GET_MQ3_BIT | GET_MQ7_BIT | GET_MQ2_THRES_BIT | GET_MQ3_THRES_BIT | GET_MQ7_THRES_BIT | SET_MQ2_THRES_BIT | SET_MQ3_THRES_BIT | SET_MQ7_THRES_BIT | GET_MQ_SAMPLING_BIT | SET_MQ_SAMPLING_BIT | GET_MQ_CYCLE_BIT | SET_MQ_CYCLE_BIT,
+  EXEC_RST_BIT = 1 << EXEC_RST,
+  GET_EXTRACTOR_MS_BIT = 1 << GET_EXTRACTOR_MS,
+  SET_EXTRACTOR_MS_BIT = 1 << SET_EXTRACTOR_MS,
+  DIGITAL_IO_EVENTS_ALL = EXEC_RST_BIT | GET_EXTRACTOR_MS_BIT | SET_EXTRACTOR_MS_BIT
+} cli_cmd_bits_t;
+
 extern const gpio_num_t gpio_map[APP_GPIO_COUNT];
 extern const adc_channel_t adc_map[APP_ADC_COUNT];
 
 extern EventGroupHandle_t alarm_event;
+extern EventGroupHandle_t cli_event;
+extern QueueHandle_t cli_data;
 
 esp_err_t app_init(void);
 

@@ -21,10 +21,24 @@ const adc_channel_t adc_map[APP_ADC_COUNT] = {
 };
 
 EventGroupHandle_t alarm_event = NULL;
+EventGroupHandle_t cli_event = NULL;
+QueueHandle_t cli_data = NULL;
 
 esp_err_t app_init(void) {
   alarm_event = xEventGroupCreate();
   if(alarm_event == NULL) {
+    // No memory available to create event
+    return ESP_ERR_NO_MEM;
+  }
+
+  cli_event = xEventGroupCreate();
+  if(cli_event == NULL) {
+    // No memory available to create event
+    return ESP_ERR_NO_MEM;
+  }
+
+  cli_data = xQueueCreate(1, sizeof(uint32_t));
+  if(cli_data == NULL) {
     // No memory available to create event
     return ESP_ERR_NO_MEM;
   }
