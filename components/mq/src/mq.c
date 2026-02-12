@@ -24,9 +24,9 @@ adc_cali_handle_t adc_cali_handle[APP_ADC_COUNT] = {0};
 
 #define MQ_SAMPLING_TIME_MS_DEFAULT   pdMS_TO_TICKS(20000)
 #define MQ_CYCLE_MS_DEFAULT pdMS_TO_TICKS(60000)
-#define MQ2_THRESHOLD_MV_DEFAULT  2500
-#define MQ3_THRESHOLD_MV_DEFAULT  2500
-#define MQ7_THRESHOLD_MV_DEFAULT  2500
+#define MQ2_THRESHOLD_MV_DEFAULT  2000
+#define MQ3_THRESHOLD_MV_DEFAULT  2000
+#define MQ7_THRESHOLD_MV_DEFAULT  2000
 
 /** Time to sample */
 uint32_t mq_sampling_time_ms;
