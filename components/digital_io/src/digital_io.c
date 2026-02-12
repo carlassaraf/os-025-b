@@ -159,13 +159,25 @@ static void digital_io_mq_leds_task(void *params) {
       ESP_LOGI(TAG, "Turning on MQ2 LED");
       digital_io_drive_output(led_mq2, 0);
     }
+    else if(!(events & ALARM_THRESHOLD_MQ2_BIT) && !gpio_get_level(led_mq2)) {
+      ESP_LOGI(TAG, "Turning off MQ2 LED");
+      digital_io_drive_output(led_mq2, 1);
+    }
     if((events & ALARM_THRESHOLD_MQ3_BIT) && gpio_get_level(led_mq3)) {
       ESP_LOGI(TAG, "Turning on MQ3 LED");
       digital_io_drive_output(led_mq3, 0);
     }
+    else if(!(events & ALARM_THRESHOLD_MQ3_BIT) && !gpio_get_level(led_mq3)) {
+      ESP_LOGI(TAG, "Turning off MQ3 LED");
+      digital_io_drive_output(led_mq3, 1);
+    }
     if((events & ALARM_THRESHOLD_MQ7_BIT) && gpio_get_level(led_mq7)) {
       ESP_LOGI(TAG, "Turning on MQ7 LED");
       digital_io_drive_output(led_mq7, 0);
+    }
+    else if(!(events & ALARM_THRESHOLD_MQ7_BIT) && !gpio_get_level(led_mq7)) {
+      ESP_LOGI(TAG, "Turning off MQ7 LED");
+      digital_io_drive_output(led_mq7, 1);
     }
     vTaskDelay(LEDS_TIME_MS);
   }
@@ -184,7 +196,7 @@ static void digital_io_buzzer_task(void *params) {
       ESP_LOGI(TAG, "Turning on buzzer");
       ESP_ERROR_CHECK(digital_io_drive_output(gpio, 1));
     }
-    else if((events & (ALARM_RST_BIT | ALARM_CLI_RST_BIT)) && gpio_get_level(gpio)) {
+    else if((events & (ALARM_RST_BIT | ALARM_CLI_RST_BIT | ALARM_OK_TO_TURN_OFF_BIT)) && gpio_get_level(gpio)) {
       // Once reset has been reached, turn off buzzer
       ESP_LOGI(TAG, "Turning off buzzer");
       ESP_ERROR_CHECK(digital_io_drive_output(gpio, 0));
@@ -206,7 +218,7 @@ static void digital_io_led_task(void *params) {
       ESP_LOGI(TAG, "Turning on alarm LED");
       digital_io_drive_output(gpio, 1);
     }
-    else if((events & (ALARM_RST_BIT | ALARM_CLI_RST_BIT)) && gpio_get_level(gpio)) {
+    else if((events & (ALARM_RST_BIT | ALARM_CLI_RST_BIT | ALARM_OK_TO_TURN_OFF_BIT)) && gpio_get_level(gpio)) {
       // Once reset has been reached, turn off LED
       ESP_LOGI(TAG, "Turning off alarm LED");
       digital_io_drive_output(gpio, 0);
